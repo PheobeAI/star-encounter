@@ -15,35 +15,14 @@ dependencies:
   # 状态管理
   provider: ^6.1.1
 
-  # 本地存储
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
-
-  # WebView
-  webview_flutter: ^4.4.2
-
   # UI组件
   cupertino_icons: ^1.0.6
 
-  # 日志
-  logger: ^2.0.2+1
-
-dev_dependencies:
+devDependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^3.0.1
-
-  # 代码生成
-  build_runner: ^2.4.8
-  hive_generator: ^2.0.1
-  
-  # 图标生成
-  flutter_launcher_icons: ^0.13.1
-
-flutter_launcher_icons:
-  android: true
-  image_path: "assets/images/icon.png"
 
 flutter:
   uses-material-design: true

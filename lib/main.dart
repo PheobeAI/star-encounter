@@ -1,33 +1,43 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'models/character.dart';
 import 'models/conversation.dart';
-import 'services/ai_service.dart';
-import 'services/database_service.dart';
-import 'services/logger_service.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // 初始化日志
-  AppLogger.init();
-  AppLogger.info('main', '应用启动');
-  
-  // 初始化数据库
-  final dbService = DatabaseService();
-  AppLogger.info('main', '正在初始化数据库...');
-  await dbService.initialize();
-  AppLogger.info('main', '数据库初始化完成');
-  
-  // 添加默认角色
-  await _initDefaultCharacters(dbService);
-  
-  runApp(StarEncounterApp(dbService: dbService));
+// 简单的内存存储
+class SimpleStorage {
+  static final List<Character> _characters = [];
+  static final Map<String, ConversationContext> _conversations = {};
+
+  static List<Character> getCharacters() => List.from(_characters);
+  static Character? getCharacter(String id) {
+    try {
+      return _characters.firstWhere((c) => c.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<void> addCharacter(Character character) async {
+    _characters.add(character);
+  }
+
+  static ConversationContext? getConversation(String id) => _conversations[id];
+
+  static Future<void> saveConversation(ConversationContext context) async {
+    _conversations[context.id] = context;
+  }
 }
 
-Future<void> _initDefaultCharacters(DatabaseService dbService) async {
-  final existingCharacters = dbService.getCharacters();
-  if (existingCharacters.isEmpty) {
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 初始化默认角色
+  _initDefaultCharacters();
+
+  runApp(const StarEncounterApp());
+}
+
+void _initDefaultCharacters() {
+  if (SimpleStorage.getCharacters().isEmpty) {
     final defaultCharacters = [
       Character(
         id: 'yuki',
@@ -94,17 +104,15 @@ Future<void> _initDefaultCharacters(DatabaseService dbService) async {
         background: '酷酷的电竞少女，实际上是个傲娇，非常在乎你但嘴上不承认。',
       ),
     ];
-    
+
     for (final char in defaultCharacters) {
-      await dbService.addCharacter(char);
+      SimpleStorage.addCharacter(char);
     }
   }
 }
 
 class StarEncounterApp extends StatelessWidget {
-  final DatabaseService dbService;
-  
-  const StarEncounterApp({super.key, required this.dbService});
+  const StarEncounterApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -115,20 +123,18 @@ class StarEncounterApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink),
         useMaterial3: true,
       ),
-      home: CharacterListScreen(dbService: dbService),
+      home: const CharacterListScreen(),
     );
   }
 }
 
 class CharacterListScreen extends StatelessWidget {
-  final DatabaseService dbService;
-  
-  const CharacterListScreen({super.key, required this.dbService});
+  const CharacterListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final characters = dbService.getCharacters();
-    
+    final characters = SimpleStorage.getCharacters();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('星之邂逅 ⭐'),
@@ -148,10 +154,7 @@ class CharacterListScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ChatScreen(
-                          character: character,
-                          aiService: AIService(),
-                        ),
+                        builder: (context) => ChatScreen(character: character),
                       ),
                     );
                   },
@@ -165,13 +168,11 @@ class CharacterListScreen extends StatelessWidget {
 class _CharacterCard extends StatelessWidget {
   final Character character;
   final VoidCallback onTap;
-  
+
   const _CharacterCard({required this.character, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final avatarEmoji = _getAvatarEmoji(character.id);
-    
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: InkWell(
@@ -192,7 +193,7 @@ class _CharacterCard extends StatelessWidget {
                 ),
                 child: Center(
                   child: Text(
-                    avatarEmoji,
+                    _getAvatarEmoji(character.id),
                     style: const TextStyle(fontSize: 30),
                   ),
                 ),
@@ -217,14 +218,6 @@ class _CharacterCard extends StatelessWidget {
                         color: Colors.grey[600],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _buildStatChip('❤️', '${character.stats.affection}'),
-                        const SizedBox(width: 8),
-                        _buildStatChip('⭐', 'Lv.${character.stats.level}'),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -235,64 +228,63 @@ class _CharacterCard extends StatelessWidget {
       ),
     );
   }
-  
-  Widget _buildStatChip(String emoji, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 12)),
-          const SizedBox(width: 4),
-          Text(text, style: const TextStyle(fontSize: 12)),
-        ],
-      ),
-    );
-  }
-  
+
   String _getAvatarEmoji(String id) {
     switch (id) {
-      case 'yuki': return '❄️';
-      case 'rina': return '🌸';
-      case 'miku': return '🎵';
-      case 'sora': return '🎮';
-      default: return '👤';
+      case 'yuki':
+        return '❄️';
+      case 'rina':
+        return '🌸';
+      case 'miku':
+        return '🎵';
+      case 'sora':
+        return '🎮';
+      default:
+        return '👤';
     }
   }
-  
+
   List<Color> _getGradientColors(String id) {
     switch (id) {
-      case 'yuki': return [const Color(0xFFa8edea), const Color(0xFFfed6e3)];
-      case 'rina': return [const Color(0xFFffdde1), const Color(0xFFee9ca7)];
-      case 'miku': return [const Color(0xFFc9ffbf), const Color(0xFFa8e063)];
-      case 'sora': return [const Color(0xFFa1c4fd), const Color(0xFFc2e9fb)];
-      default: return [Colors.grey[300]!, Colors.grey[400]!];
+      case 'yuki':
+        return [const Color(0xFFa8edea), const Color(0xFFfed6e3)];
+      case 'rina':
+        return [const Color(0xFFffdde1), const Color(0xFFee9ca7)];
+      case 'miku':
+        return [const Color(0xFFc9ffbf), const Color(0xFFa8e063)];
+      case 'sora':
+        return [const Color(0xFFa1c4fd), const Color(0xFFc2e9fb)];
+      default:
+        return [Colors.grey[300]!, Colors.grey[400]!];
     }
   }
-  
+
   String _getPersonalityText(PersonalityType personality) {
     switch (personality) {
-      case PersonalityType.gentle: return '温柔型';
-      case PersonalityType.lively: return '活泼型';
-      case PersonalityType.cool: return '冷酷型';
-      case PersonalityType.tsundere: return '傲娇型';
-      case PersonalityType.shy: return '害羞型';
-      case PersonalityType.energetic: return '精力充沛型';
-      case PersonalityType.mysterious: return '神秘型';
-      case PersonalityType.cheerful: return '开朗型';
+      case PersonalityType.gentle:
+        return '温柔型';
+      case PersonalityType.lively:
+        return '活泼型';
+      case PersonalityType.cool:
+        return '冷酷型';
+      case PersonalityType.tsundere:
+        return '傲娇型';
+      case PersonalityType.shy:
+        return '害羞型';
+      case PersonalityType.energetic:
+        return '精力充沛型';
+      case PersonalityType.mysterious:
+        return '神秘型';
+      case PersonalityType.cheerful:
+        return '开朗型';
     }
   }
 }
 
 class ChatScreen extends StatefulWidget {
   final Character character;
-  final AIService aiService;
-  
-  const ChatScreen({super.key, required this.character, required this.aiService});
+
+  const ChatScreen({super.key, required this.character});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -301,14 +293,13 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<DialogueMessage> _messages = [];
-  ConversationContext? _context;
 
   @override
   void initState() {
     super.initState();
     _addInitialMessage();
   }
-  
+
   void _addInitialMessage() {
     final greeting = _getGreeting(widget.character.personality);
     final message = DialogueMessage(
@@ -322,7 +313,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add(message);
     });
   }
-  
+
   String _getGreeting(PersonalityType personality) {
     switch (personality) {
       case PersonalityType.gentle:
@@ -347,7 +338,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _sendMessage() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    
+
     final userMessage = DialogueMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       sender: MessageSender.user,
@@ -355,28 +346,31 @@ class _ChatScreenState extends State<ChatScreen> {
       emotion: MessageEmotion.happy,
       affectionChange: 0,
     );
-    
+
     setState(() {
       _messages.add(userMessage);
       _controller.clear();
     });
-    
-    final reply = widget.aiService.generateReply(
-      character: widget.character,
-      userMessage: text,
-      context: _context,
-    );
-    
-    // 更新上下文
-    final allMessages = [..._messages, reply];
-    _context = ConversationContext(
-      id: 'ctx_${DateTime.now().millisecondsSinceEpoch}',
-      characterId: widget.character.id,
-      messages: allMessages,
-    );
-    
-    setState(() {
-      _messages.add(reply);
+
+    // 简单的自动回复
+    Future.delayed(const Duration(milliseconds: 500), () {
+      final replies = [
+        '嗯嗯，我听见了～',
+        '真的吗？好厉害呀！',
+        '哇，听起来好棒！',
+        '呵呵，你真有趣～',
+        '我在认真听呢',
+      ];
+      final reply = DialogueMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        sender: MessageSender.character,
+        text: replies[DateTime.now().millisecond % replies.length],
+        emotion: MessageEmotion.happy,
+        affectionChange: 1,
+      );
+      setState(() {
+        _messages.add(reply);
+      });
     });
   }
 
@@ -386,7 +380,8 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            Text(_getAvatarEmoji(widget.character.id), style: const TextStyle(fontSize: 24)),
+            Text(_getAvatarEmoji(widget.character.id),
+                style: const TextStyle(fontSize: 24)),
             const SizedBox(width: 8),
             Text(widget.character.name),
           ],
@@ -402,17 +397,19 @@ class _ChatScreenState extends State<ChatScreen> {
               itemBuilder: (context, index) {
                 final message = _messages[index];
                 final isUser = message.sender == MessageSender.user;
-                
+
                 return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment:
+                      isUser ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     constraints: BoxConstraints(
                       maxWidth: MediaQuery.of(context).size.width * 0.7,
                     ),
                     decoration: BoxDecoration(
-                      color: isUser 
+                      color: isUser
                           ? Theme.of(context).colorScheme.primary
                           : Colors.grey[200],
                       borderRadius: BorderRadius.circular(20),
@@ -450,7 +447,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                     ),
                     onSubmitted: (_) => _sendMessage(),
                   ),
@@ -468,14 +466,19 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
-  
+
   String _getAvatarEmoji(String id) {
     switch (id) {
-      case 'yuki': return '❄️';
-      case 'rina': return '🌸';
-      case 'miku': return '🎵';
-      case 'sora': return '🎮';
-      default: return '👤';
+      case 'yuki':
+        return '❄️';
+      case 'rina':
+        return '🌸';
+      case 'miku':
+        return '🎵';
+      case 'sora':
+        return '🎮';
+      default:
+        return '👤';
     }
   }
 }
