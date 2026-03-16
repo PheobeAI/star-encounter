@@ -1,12 +1,98 @@
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'package:flutter/services.dart';
+import 'models/character.dart';
+import 'models/conversation.dart';
+import 'services/ai_service.dart';
+import 'services/database_service.dart';
+import 'services/logger_service.dart';
 
-void main() {
-  runApp(const StarEncounterApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 初始化日志
+  AppLogger.init();
+  AppLogger.info('main', '应用启动');
+  
+  // 初始化数据库
+  final dbService = DatabaseService();
+  AppLogger.info('main', '正在初始化数据库...');
+  await dbService.initialize();
+  AppLogger.info('main', '数据库初始化完成');
+  
+  // 添加默认角色
+  await _initDefaultCharacters(dbService);
+  
+  runApp(StarEncounterApp(dbService: dbService));
+}
+
+Future<void> _initDefaultCharacters(DatabaseService dbService) async {
+  final existingCharacters = dbService.getCharacters();
+  if (existingCharacters.isEmpty) {
+    final defaultCharacters = [
+      Character(
+        id: 'yuki',
+        name: '雪羽',
+        personality: PersonalityType.gentle,
+        appearance: CharacterAppearance(
+          height: '165cm',
+          hairColor: '银白色',
+          eyeColor: '淡蓝色',
+        ),
+        stats: CharacterStats(),
+        skills: ['冰雪魔法', '治愈术'],
+        background: '来自冰雪王国的公主，性格温柔内向，喜欢安静地看雪。',
+      ),
+      Character(
+        id: 'rina',
+        name: '莉娜',
+        personality: PersonalityType.lively,
+        appearance: CharacterAppearance(
+          height: '160cm',
+          hairColor: '粉色',
+          eyeColor: '橙色',
+        ),
+        stats: CharacterStats(),
+        skills: ['活力满点', '社交达人'],
+        background: '活力四射的阳光少女，喜欢有趣的事情和结交新朋友。',
+      ),
+      Character(
+        id: 'miku',
+        name: '美琴',
+        personality: PersonalityType.mysterious,
+        appearance: CharacterAppearance(
+          height: '168cm',
+          hairColor: '紫色',
+          eyeColor: '深紫色',
+        ),
+        stats: CharacterStats(),
+        skills: ['天籁之音', '神秘之力'],
+        background: '神秘的歌手，拥有天籁般的嗓音，似乎隐藏着很多秘密。',
+      ),
+      Character(
+        id: 'sora',
+        name: '空',
+        personality: PersonalityType.tsundere,
+        appearance: CharacterAppearance(
+          height: '170cm',
+          hairColor: '蓝色',
+          eyeColor: '灰蓝色',
+        ),
+        stats: CharacterStats(),
+        skills: ['电竞高手', '傲娇'],
+        background: '酷酷的电竞少女，实际上是个傲娇，非常在乎你但嘴上不承认。',
+      ),
+    ];
+    
+    for (final char in defaultCharacters) {
+      await dbService.addCharacter(char);
+    }
+  }
 }
 
 class StarEncounterApp extends StatelessWidget {
-  const StarEncounterApp({super.key});
+  final DatabaseService dbService;
+  
+  const StarEncounterApp({super.key, required this.dbService});
 
   @override
   Widget build(BuildContext context) {
@@ -17,53 +103,370 @@ class StarEncounterApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.pink),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: CharacterListScreen(dbService: dbService),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class CharacterListScreen extends StatelessWidget {
+  final DatabaseService dbService;
+  
+  const CharacterListScreen({super.key, required this.dbService});
 
   @override
   Widget build(BuildContext context) {
+    final characters = dbService.getCharacters();
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('星之邂逅 ⭐'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         centerTitle: true,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              '⭐',
-              style: TextStyle(fontSize: 80),
+      body: characters.isEmpty
+          ? const Center(child: Text('暂无角色'))
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: characters.length,
+              itemBuilder: (context, index) {
+                final character = characters[index];
+                return _CharacterCard(
+                  character: character,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatScreen(
+                          character: character,
+                          aiService: AIService(),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
-            const SizedBox(height: 20),
-            const Text(
-              '星之邂逅',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+    );
+  }
+}
+
+class _CharacterCard extends StatelessWidget {
+  final Character character;
+  final VoidCallback onTap;
+  
+  const _CharacterCard({required this.character, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final avatarEmoji = _getAvatarEmoji(character.id);
+    
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: _getGradientColors(character.id),
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Center(
+                  child: Text(
+                    avatarEmoji,
+                    style: const TextStyle(fontSize: 30),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              '二次元角色互动与养成',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      character.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _getPersonalityText(character.personality),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        _buildStatChip('❤️', '${character.stats.affection}'),
+                        const SizedBox(width: 8),
+                        _buildStatChip('⭐', 'Lv.${character.stats.level}'),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 40),
-            const CircularProgressIndicator(),
-            const SizedBox(height: 20),
-            const Text('正在加载中...'),
-          ],
+              const Icon(Icons.chevron_right),
+            ],
+          ),
         ),
       ),
     );
+  }
+  
+  Widget _buildStatChip(String emoji, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(emoji, style: const TextStyle(fontSize: 12)),
+          const SizedBox(width: 4),
+          Text(text, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
+  }
+  
+  String _getAvatarEmoji(String id) {
+    switch (id) {
+      case 'yuki': return '❄️';
+      case 'rina': return '🌸';
+      case 'miku': return '🎵';
+      case 'sora': return '🎮';
+      default: return '👤';
+    }
+  }
+  
+  List<Color> _getGradientColors(String id) {
+    switch (id) {
+      case 'yuki': return [const Color(0xFFa8edea), const Color(0xFFfed6e3)];
+      case 'rina': return [const Color(0xFFffdde1), const Color(0xFFee9ca7)];
+      case 'miku': return [const Color(0xFFc9ffbf), const Color(0xFFa8e063)];
+      case 'sora': return [const Color(0xFFa1c4fd), const Color(0xFFc2e9fb)];
+      default: return [Colors.grey[300]!, Colors.grey[400]!];
+    }
+  }
+  
+  String _getPersonalityText(PersonalityType personality) {
+    switch (personality) {
+      case PersonalityType.gentle: return '温柔型';
+      case PersonalityType.lively: return '活泼型';
+      case PersonalityType.cool: return '冷酷型';
+      case PersonalityType.tsundere: return '傲娇型';
+      case PersonalityType.shy: return '害羞型';
+      case PersonalityType.mysterious: return '神秘型';
+      case PersonalityType.cheerful: return '元气型';
+      case PersonalityType.efficient: return '干练型';
+    }
+  }
+}
+
+class ChatScreen extends StatefulWidget {
+  final Character character;
+  final AIService aiService;
+  
+  const ChatScreen({super.key, required this.character, required this.aiService});
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final TextEditingController _controller = TextEditingController();
+  final List<DialogueMessage> _messages = [];
+  ConversationContext? _context;
+
+  @override
+  void initState() {
+    super.initState();
+    // 添加初始问候消息
+    _addInitialMessage();
+  }
+  
+  void _addInitialMessage() {
+    final greeting = _getGreeting(widget.character.personality);
+    final message = DialogueMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      sender: MessageSender.character,
+      text: greeting,
+      emotion: MessageEmotion.happy,
+      affectionChange: 0,
+    );
+    setState(() {
+      _messages.add(message);
+    });
+  }
+  
+  String _getGreeting(PersonalityType personality) {
+    switch (personality) {
+      case PersonalityType.gentle:
+        return '你好呀～很高兴见到你！✨';
+      case PersonalityType.lively:
+        return '哇！终于有人来了！你好呀！🎉';
+      case PersonalityType.mysterious:
+        return '......你好。我是美琴。🎶';
+      case PersonalityType.tsundere:
+        return '哼...你也是来打游戏的？';
+      case PersonalityType.shy:
+        return '啊...你、你好......';
+      case PersonalityType.cool:
+        return '......来了。';
+      case PersonalityType.cheerful:
+        return '嘿！今天也要开心度过！🌟';
+      case PersonalityType.efficient:
+        return '你好，有什么需要帮助的吗？';
+    }
+  }
+
+  void _sendMessage() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    
+    // 添加用户消息
+    final userMessage = DialogueMessage(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      sender: MessageSender.user,
+      text: text,
+      emotion: MessageEmotion.happy,
+      affectionChange: 0,
+    );
+    
+    setState(() {
+      _messages.add(userMessage);
+      _controller.clear();
+    });
+    
+    // 生成回复
+    final reply = widget.aiService.generateReply(
+      character: widget.character,
+      userMessage: text,
+      context: _context,
+    );
+    
+    // 更新上下文
+    _context = ConversationContext(
+      characterId: widget.character.id,
+      messages: [..._messages, userMessage],
+      lastMessage: reply,
+    );
+    
+    // 添加角色回复
+    setState(() {
+      _messages.add(reply);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Text(_getAvatarEmoji(widget.character.id), style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 8),
+            Text(widget.character.name),
+          ],
+        ),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final message = _messages[index];
+                final isUser = message.sender == MessageSender.user;
+                
+                return Align(
+                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isUser 
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      message.text,
+                      style: TextStyle(
+                        color: isUser ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      hintText: '发送消息...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                    onSubmitted: (_) => _sendMessage(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: _sendMessage,
+                  icon: const Icon(Icons.send),
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  String _getAvatarEmoji(String id) {
+    switch (id) {
+      case 'yuki': return '❄️';
+      case 'rina': return '🌸';
+      case 'miku': return '🎵';
+      case 'sora': return '🎮';
+      default: return '👤';
+    }
   }
 }
