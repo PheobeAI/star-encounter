@@ -121,6 +121,11 @@ cd scripts
 
 下载的 APK 会保存在 `builds/<时间戳>/` 目录下。
 
+**构建产物规范**:
+- 产物目录: `builds/star-encounter/`
+- 版本目录: `builds/star-encounter/<构建日期>/`
+- 文件名: `app-release.apk`
+
 ## 联系方式
 
 - GitHub: https://github.com/PheobeAI/star-encounter
