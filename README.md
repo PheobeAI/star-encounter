@@ -101,6 +101,26 @@ flutter build apk --release
 3. 在底部 **Artifacts** 区域下载 `star-encounter-release`
 4. 解压后即可安装使用
 
+#### 使用下载脚本（推荐）
+
+项目提供了自动下载脚本，位于 `scripts/download-apk.ps1`:
+
+```powershell
+# 进入脚本目录
+cd scripts
+
+# 运行下载脚本（自动获取最新构建）
+.\download-apk.ps1
+
+# 指定 Run ID 下载
+.\download-apk.ps1 -RunId 23149140270
+
+# 指定自定义构建目录
+.\download-apk.ps1 -BuildDir "v1.0.0-release"
+```
+
+下载的 APK 会保存在 `builds/<时间戳>/` 目录下。
+
 ## 联系方式
 
 - GitHub: https://github.com/PheobeAI/star-encounter
