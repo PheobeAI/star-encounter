@@ -1,7 +1,3 @@
-import 'package:hive/hive.dart';
-
-part 'character.g.dart';
-
 /// 角色性格类型
 enum PersonalityType {
   lively,     // 活泼
@@ -15,21 +11,11 @@ enum PersonalityType {
 }
 
 /// 角色外观
-@HiveType(typeId: 1)
 class CharacterAppearance {
-  @HiveField(0)
   final String height; // 身高
-
-  @HiveField(1)
   final String hairColor; // 发色
-
-  @HiveField(2)
   final String eyeColor; // 眼色
-
-  @HiveField(3)
   final String? outfit; // 服装
-
-  @HiveField(4)
   final String? accessory; // 配饰
 
   CharacterAppearance({
@@ -42,18 +28,10 @@ class CharacterAppearance {
 }
 
 /// 角色属性
-@HiveType(typeId: 2)
 class CharacterStats {
-  @HiveField(0)
   final int level; // 等级
-
-  @HiveField(1)
   final int exp; // 经验值
-
-  @HiveField(2)
   final int affection; // 好感度 (0-100)
-
-  @HiveField(3)
   final int affinity; // 羁绊点数
 
   CharacterStats({
@@ -102,24 +80,12 @@ class CharacterStats {
 }
 
 /// 角色技能
-@HiveType(typeId: 3)
 class CharacterSkill {
-  @HiveField(0)
   final String id;
-
-  @HiveField(1)
   final String name;
-
-  @HiveField(2)
   final String description;
-
-  @HiveField(3)
   final int level; // 当前等级
-
-  @HiveField(4)
   final int maxLevel; // 最大等级
-
-  @HiveField(5)
   final String icon; // 技能图标
 
   CharacterSkill({
@@ -149,30 +115,14 @@ class CharacterSkill {
 }
 
 /// 角色数据模型
-@HiveType(typeId: 0)
 class Character {
-  @HiveField(0)
   final String id;
-
-  @HiveField(1)
   final String name;
-
-  @HiveField(2)
   final PersonalityType personality;
-
-  @HiveField(3)
   final CharacterAppearance appearance;
-
-  @HiveField(4)
   final CharacterStats stats;
-
-  @HiveField(5)
   final List<CharacterSkill> skills;
-
-  @HiveField(6)
   final String background; // 背景故事
-
-  @HiveField(7)
   final DateTime createdAt;
 
   Character({

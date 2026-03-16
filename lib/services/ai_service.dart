@@ -72,7 +72,7 @@ class AIService {
   DialogueMessage generateReply({
     required Character character,
     required String userMessage,
-    required ConversationContext? context,
+    ConversationContext? context,
   }) {
     // 根据性格选择回复风格
     final replyStyle = _getReplyStyle(character.personality);
@@ -84,7 +84,6 @@ class AIService {
     final affectionChange = _calculateAffectionChange(
       character.personality,
       userMessage,
-      context?.lastMessage.text ?? '',
     );
 
     // 随机情感
@@ -138,7 +137,6 @@ class AIService {
   int _calculateAffectionChange(
     PersonalityType personality,
     String userMessage,
-    String lastCharacterMessage,
   ) {
     final random = Random();
 
