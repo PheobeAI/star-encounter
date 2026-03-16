@@ -37,7 +37,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..loadRequest(Uri.parse('https://star-encounter-pheobeai.netlify.app'));
+      ..loadRequest(Uri.parse('https://pheobeai.github.io/star-encounter/'));
   }
 
   @override
