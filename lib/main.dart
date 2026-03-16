@@ -39,7 +39,10 @@ Future<void> _initDefaultCharacters(DatabaseService dbService) async {
           eyeColor: '淡蓝色',
         ),
         stats: CharacterStats(),
-        skills: ['冰雪魔法', '治愈术'],
+        skills: [
+          CharacterSkill(id: 'skill_1', name: '冰雪魔法', description: '操控冰雪的力量', icon: '❄️'),
+          CharacterSkill(id: 'skill_2', name: '治愈术', description: '恢复生命值', icon: '💚'),
+        ],
         background: '来自冰雪王国的公主，性格温柔内向，喜欢安静地看雪。',
       ),
       Character(
@@ -52,7 +55,10 @@ Future<void> _initDefaultCharacters(DatabaseService dbService) async {
           eyeColor: '橙色',
         ),
         stats: CharacterStats(),
-        skills: ['活力满点', '社交达人'],
+        skills: [
+          CharacterSkill(id: 'skill_3', name: '活力满点', description: '充满活力', icon: '⚡'),
+          CharacterSkill(id: 'skill_4', name: '社交达人', description: '容易交到朋友', icon: '🤝'),
+        ],
         background: '活力四射的阳光少女，喜欢有趣的事情和结交新朋友。',
       ),
       Character(
@@ -65,7 +71,10 @@ Future<void> _initDefaultCharacters(DatabaseService dbService) async {
           eyeColor: '深紫色',
         ),
         stats: CharacterStats(),
-        skills: ['天籁之音', '神秘之力'],
+        skills: [
+          CharacterSkill(id: 'skill_5', name: '天籁之音', description: '美妙的歌声', icon: '🎵'),
+          CharacterSkill(id: 'skill_6', name: '神秘之力', description: '未知的力量', icon: '🔮'),
+        ],
         background: '神秘的歌手，拥有天籁般的嗓音，似乎隐藏着很多秘密。',
       ),
       Character(
@@ -78,7 +87,10 @@ Future<void> _initDefaultCharacters(DatabaseService dbService) async {
           eyeColor: '灰蓝色',
         ),
         stats: CharacterStats(),
-        skills: ['电竞高手', '傲娇'],
+        skills: [
+          CharacterSkill(id: 'skill_7', name: '电竞高手', description: '游戏高手', icon: '🎮'),
+          CharacterSkill(id: 'skill_8', name: '傲娇', description: '嘴上不承认', icon: '😤'),
+        ],
         background: '酷酷的电竞少女，实际上是个傲娇，非常在乎你但嘴上不承认。',
       ),
     ];
@@ -269,9 +281,9 @@ class _CharacterCard extends StatelessWidget {
       case PersonalityType.cool: return '冷酷型';
       case PersonalityType.tsundere: return '傲娇型';
       case PersonalityType.shy: return '害羞型';
+      case PersonalityType.energetic: return '精力充沛型';
       case PersonalityType.mysterious: return '神秘型';
-      case PersonalityType.cheerful: return '元气型';
-      case PersonalityType.efficient: return '干练型';
+      case PersonalityType.cheerful: return '开朗型';
     }
   }
 }
@@ -294,7 +306,6 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    // 添加初始问候消息
     _addInitialMessage();
   }
   
@@ -328,7 +339,7 @@ class _ChatScreenState extends State<ChatScreen> {
         return '......来了。';
       case PersonalityType.cheerful:
         return '嘿！今天也要开心度过！🌟';
-      case PersonalityType.efficient:
+      case PersonalityType.energetic:
         return '你好，有什么需要帮助的吗？';
     }
   }
@@ -337,7 +348,6 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     
-    // 添加用户消息
     final userMessage = DialogueMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       sender: MessageSender.user,
@@ -351,7 +361,6 @@ class _ChatScreenState extends State<ChatScreen> {
       _controller.clear();
     });
     
-    // 生成回复
     final reply = widget.aiService.generateReply(
       character: widget.character,
       userMessage: text,
@@ -359,13 +368,13 @@ class _ChatScreenState extends State<ChatScreen> {
     );
     
     // 更新上下文
+    final allMessages = [..._messages, reply];
     _context = ConversationContext(
+      id: 'ctx_${DateTime.now().millisecondsSinceEpoch}',
       characterId: widget.character.id,
-      messages: [..._messages, userMessage],
-      lastMessage: reply,
+      messages: allMessages,
     );
     
-    // 添加角色回复
     setState(() {
       _messages.add(reply);
     });

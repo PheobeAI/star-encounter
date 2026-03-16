@@ -112,7 +112,7 @@ class AIService {
         return [..._greetings, ..._tsundereResponses];
       case PersonalityType.shy:
         return [..._greetings, ..._shyResponses];
-      case PersonalityType.efficient:
+      case PersonalityType.energetic:
         return [..._greetings, ..._cheerfulResponses];
       case PersonalityType.mysterious:
         return [..._greetings, ..._mysteriousResponses];
@@ -148,7 +148,7 @@ class AIService {
     // 根据性格调整
     switch (personality) {
       case PersonalityType.lively:
-      case PersonalityType.efficient:
+      case PersonalityType.energetic:
       case PersonalityType.cheerful:
         baseChange += 1; // 活泼性格更容易增加好感度
         break;

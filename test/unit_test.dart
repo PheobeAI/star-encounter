@@ -373,6 +373,7 @@ void main() {
       expect(PersonalityType.values, contains(PersonalityType.lively));
       expect(PersonalityType.values, contains(PersonalityType.tsundere));
       expect(PersonalityType.values, contains(PersonalityType.mysterious));
+      expect(PersonalityType.values, contains(PersonalityType.energetic));
     });
   });
 }
